@@ -4,6 +4,6 @@ namespace src.DAL
 {
     public interface ILinksCtx
     {
-        IMongoCollection<Link> Links { get; set; }
+        IMongoCollection<Link> Links { get; }
     }
 }

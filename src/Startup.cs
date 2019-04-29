@@ -11,6 +11,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using src.BL;
+using src.DAL;
 
 namespace src
 {
@@ -25,8 +26,19 @@ namespace src
 
         public void ConfigureServices(IServiceCollection services)
         {
+            services.AddSingleton<IShortLinkGenerator, ShortLinkGenerator>();
+            services.AddTransient<ILinksCtx, LinksCtx>();
             services.AddTransient<ILinksService, LinksService>();
-            services.AddTransient<IShortLinkGenerator, ShortLinkGenerator>();
+            services.AddTransient<ILinksRepository, LinksRepository>();
+            
+            services.Configure<MongoSettings>(
+                options => { 
+                    options.ConnectionString 
+                        = Configuration.GetSection("MongoDb:ConnectionString").Value; 
+                    options.Database
+                        = Configuration.GetSection("MongoDb:Database").Value; 
+                }
+            );
 
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_2);
         }
