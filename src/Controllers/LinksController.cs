@@ -1,7 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
+using src.ApiResults;
 using src.BL;
 using src.DAL;
 using src.Models;
@@ -24,15 +25,33 @@ namespace src.Controllers
         }
         
         [HttpGet]
-        public ActionResult<IEnumerable<string>> Get()
+        public async Task<ActionResult> Get()
         {
-            return new[] {"link"};
+            if (!HttpContext.Request.Cookies.TryGetValue("userId", out var userId))
+                return Ok();
+            
+            var links = await _linkService.GetLinks(userId);
+            return Ok(
+                links.Select(l => 
+                    new GetAllLinksResult
+                    {
+                        ShortLink = l.ShortLink,
+                        OriginalLink = l.OriginalLink,
+                        HitCount = l.HitCount
+                    }));
         }
 
         [HttpGet("{id}")]
-        public ActionResult<string> Get(string id)
+        public async Task<ActionResult> Get(string id)
         {
-            return "link";
+            var link = await _linkService.GetLinkById(id);
+            if (link == null)
+                return NotFound();
+
+            await _linkService.AddHitToLink(link);
+
+            //return Redirect(link.OriginalLink);
+            return Ok(new GetLinkResult {Link = link.OriginalLink});
         }
 
         [HttpPost]
@@ -41,8 +60,7 @@ namespace src.Controllers
             if (!Uri.TryCreate(model.Url, UriKind.Absolute, out _))
                 return BadRequest();
 
-            var userId = string.Empty;
-            if(!HttpContext.Request.Cookies.TryGetValue("userId", out _))
+            if (!HttpContext.Request.Cookies.TryGetValue("userId", out var userId))
             {
                 userId = Guid.NewGuid().ToString();
                 HttpContext.Response.Cookies.Append("userId", userId);
@@ -54,6 +72,8 @@ namespace src.Controllers
                 ShortLink = GenerateShortLink(),
                 UserId = userId
             };
+
+            await _linkService.CreateLink(newLink);
 
             return Ok(new
             {
